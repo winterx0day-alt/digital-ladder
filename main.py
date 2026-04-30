@@ -1,68 +1,69 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
 
-# --- 1. SETUP & SESSION STATE (แทน In-memory DB) ---
-st.set_page_config(page_title="User Management", layout="wide")
+# --- 1. SETTINGS & STYLING ---
+st.set_page_config(page_title="Thai Digital Savings Comparison", layout="wide", page_icon="💰")
 
-if "fake_db" not in st.session_state:
-    st.session_state.fake_db = {
-        1: {"id": 1, "name": "Alice", "email": "alice@example.com", "created_at": "2024-01-01"},
-        2: {"id": 2, "name": "Bob", "email": "bob@example.com", "created_at": "2024-01-02"},
+# --- 2. DATABASE: LATEST INTEREST RATES (2026 DATA) ---
+# Note: In a production app, you would fetch this from an API or Web Scraper
+savings_data = [
+    {"Bank": "Dime! (KKP)", "Account": "Save", "Rate": "3.00%", "Limit": "Up to 30,000 THB", "Min_Rate": 3.0},
+    {"Bank": "LHB You (LH Bank)", "Account": "Digital Savings", "Rate": "6.00%", "Limit": "Up to 10,000 THB", "Min_Rate": 6.0},
+    {"Bank": "CIMB Thai", "Account": "Chill D", "Rate": "2.88%", "Limit": "Up to 100,000 THB", "Min_Rate": 2.88},
+    {"Bank": "Kept (by Krungsri)", "Account": "Grow", "Rate": "2.22%", "Limit": "Up to 5,000,000 THB", "Min_Rate": 2.22},
+    {"Bank": "Alpha X (SCBX)", "Account": "Privilege", "Rate": "2.50%", "Limit": "Up to 500,000 THB", "Min_Rate": 2.50},
+    {"Bank": "UOB", "Account": "TMRW", "Rate": "2.00%", "Limit": "Variable", "Min_Rate": 2.0},
+]
+
+df = pd.DataFrame(savings_data)
+
+# --- 3. UI: SIDEBAR CALCULATOR ---
+st.sidebar.header("📊 Your Savings Goal")
+user_savings = st.sidebar.number_input("Enter your savings amount (THB)", min_value=0, value=50000, step=1000)
+st.sidebar.caption("The tool will calculate annual interest based on your input.")
+
+# --- 4. MAIN DASHBOARD ---
+st.title("💰 Thai High-Interest Digital Savings Comparison")
+st.write("Compare the best digital accounts in Thailand and see which one fits your balance best.")
+
+# --- 5. VISUALIZATION: COMPARISON TABLE ---
+st.subheader("🏦 Top High-Interest Accounts")
+
+# Sort data by interest rate
+df_sorted = df.sort_values(by="Min_Rate", ascending=False)
+
+# Add a column for projected annual return
+df_sorted["Est. Annual Interest (THB)"] = (user_savings * df_sorted["Min_Rate"]) / 100
+
+# Display the dataframe with high-interest highlighting
+st.dataframe(
+    df_sorted.drop(columns=["Min_Rate"]), 
+    use_container_width=True, 
+    hide_index=True,
+    column_config={
+        "Rate": st.column_config.TextColumn("Interest Rate", help="Maximum available rate"),
+        "Est. Annual Interest (THB)": st.column_config.NumberColumn(format="฿ %.2f")
     }
-if "next_id" not in st.session_state:
-    st.session_state.next_id = 3
+)
 
-# --- 2. LOGIC FUNCTIONS (แปลงจาก API Routes) ---
-def create_user(name, email):
-    new_id = st.session_state.next_id
-    user = {
-        "id": new_id,
-        "name": name,
-        "email": email,
-        "created_at": datetime.now().strftime("%Y-%m-%d"),
-    }
-    st.session_state.fake_db[new_id] = user
-    st.session_state.next_id += 1
-    st.success(f"Created user: {name}")
+# --- 6. RECOMMENDATION LOGIC ---
+st.divider()
+st.subheader("💡 Analysis & Recommendation")
 
-def delete_user(user_id):
-    if user_id in st.session_state.fake_db:
-        del st.session_state.fake_db[user_id]
-        st.toast(f"Deleted User ID {user_id}")
-    else:
-        st.error("User not found")
+best_bank = df_sorted.iloc[0]
 
-# --- 3. STREAMLIT UI ---
-st.title("👤 User Management System")
+col1, col2 = st.columns(2)
+with col1:
+    st.metric("Highest Rate Available", f"{best_bank['Rate']}", f"at {best_bank['Bank']}")
+    st.write(f"Based on your savings of **฿{user_savings:,.2f}**, the highest theoretical return is with **{best_bank['Bank']}**.")
 
-# ส่วนที่ 1: เพิ่ม User (แทน POST /users)
-with st.expander("➕ Add New User", expanded=True):
-    with st.form("create_form", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        new_name = col1.text_input("Name")
-        new_email = col2.text_input("Email")
-        submit = st.form_submit_button("Create")
-        
-        if submit:
-            if new_name and new_email:
-                create_user(new_name, new_email)
-                st.rerun()
-            else:
-                st.warning("Please fill all fields")
+with col2:
+    st.info("""
+    **Things to consider:**
+    * **Tiered Rates:** Many banks like LH Bank offer 6%, but only for the first 10,000 THB.
+    * **Withdrawal Limits:** Check if the account allows unlimited free transfers.
+    * **Minimum Balance:** Some accounts require a minimum balance to maintain the rate.
+    """)
 
-# ส่วนที่ 2: แสดงข้อมูลและลบ (แทน GET /users และ DELETE /users)
-st.subheader("📋 User List")
-if st.session_state.fake_db:
-    # แปลง dict เป็น DataFrame เพื่อแสดงตาราง
-    df = pd.DataFrame(list(st.session_state.fake_db.values()))
-    st.dataframe(df, use_container_width=True, hide_index=True)
-
-    # ส่วนลบข้อมูล
-    st.divider()
-    delete_id = st.number_input("Enter ID to delete", min_value=1, step=1)
-    if st.button("Delete User", type="primary"):
-        delete_user(delete_id)
-        st.rerun()
-else:
-    st.info("No users found.")
+# --- 7. FOOTER ---
+st.caption("Disclaimer: Rates are updated for 2026. Always check the official bank app for real-time terms and conditions.")
