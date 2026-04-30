@@ -5,7 +5,7 @@ import pandas as pd
 st.set_page_config(page_title="Thai Digital Savings Comparison", layout="wide", page_icon="💰")
 
 # --- 2. DATABASE: LATEST INTEREST RATES (2026 DATA) ---
-# Note: In a production app, you would fetch this from an API or Web Scraper
+# Note: In a production app, you would fetch this from an API or Web Scraper 
 savings_data = [
     {"Bank": "Dime! (KKP)", "Account": "Save", "Rate": "3.00%", "Limit": "Up to 30,000 THB", "Min_Rate": 3.0},
     {"Bank": "LHB You (LH Bank)", "Account": "Digital Savings", "Rate": "6.00%", "Limit": "Up to 10,000 THB", "Min_Rate": 6.0},
